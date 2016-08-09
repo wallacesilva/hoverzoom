@@ -252,16 +252,66 @@ function getPlugins(callback) {
     });
 }
 
-function loadPlugins() {
-    getPlugins(function(plugins) {
-        plugins.forEach(function(plugin) {
-            var script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = '../plugins/' + plugin;
-            document.body.appendChild(script);
+function getPluginsAltFF(callback) {
+    plugins = [];
+    chrome.runtime.getManifest().content_scripts.forEach(function(item) {
+        //callback(plugin);
+        item.js.forEach(function(js){
+            if (js.search('/plugins/') != -1) {
+                plugin = js.split('/plugins/').reverse()[0];
+                //console.log(plugin);
+                
+                if (plugins.lastIndexOf(plugin) == -1)
+                    plugins.push(plugin);
+            }
         });
-        window.setTimeout(populatePluginsTable, 500);
     });
+    plugins.sort();
+    callback(plugins);
+}
+function isBrowser()
+{
+    var userAgent = (navigator && navigator.userAgent || '').toLowerCase();
+    var vendor = (navigator && navigator.vendor || '').toLowerCase();
+    var matchChrome = /google inc/.test(vendor) && userAgent.match(/(?:chrome|crios)\/(\d+)/);
+    var matchFF = userAgent.match(/(?:firefox|fxios)\/(\d+)/);
+
+    if(!!matchChrome) 
+        return 'chrome';
+
+    if(!!matchFF) 
+        return 'firefox';
+
+}
+
+function loadPlugins() {
+    
+    // firefox dont have support for now to function 'getPackageDirectoryEntry'
+    if (isBrowser() == 'firefox') {
+
+        getPluginsAltFF(function(plugins) {
+            plugins.forEach(function(plugin) {
+                var script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = '../plugins/' + plugin;
+                document.body.appendChild(script);
+            });
+            window.setTimeout(populatePluginsTable, 500);
+        });
+
+    } else {
+
+        getPlugins(function(plugins) {
+            plugins.forEach(function(plugin) {
+                var script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = '../plugins/' + plugin;
+                document.body.appendChild(script);
+            });
+            window.setTimeout(populatePluginsTable, 500);
+        });
+
+    }
 }
 
 function populatePluginsTable() {
@@ -278,7 +328,7 @@ $(function () {
     initActionKeys();
     i18n();
     chkWhiteListModeOnChange();
-    $("#version").text(chrome.i18n.getMessage("optFooterVersionCopyright", chrome.app.getDetails().version));
+    $("#version").text(chrome.i18n.getMessage("optFooterVersionCopyright", chrome.runtime.getManifest().version));
 
     $('#btnSave').click(saveOptions);
     $('#btnReset').click(restoreOptions);
